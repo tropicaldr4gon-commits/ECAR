@@ -1,0 +1,1519 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#000000">
+
+    <title>Phuoc An Port - Smart Ride System</title>
+    
+    <link rel="preload" href="https://github.com/tropicaldr4gon-commits/ECAR/blob/main/modau.gif?raw=true" as="image">
+    <link rel="preload" href="https://cdn.jsdelivr.net/gh/tropicaldr4gon-commits/anhdulieu@main/mcu-ezgif.com-coalesce.gif" as="image">
+    <link rel="preload" href="https://cdn.jsdelivr.net/gh/tropicaldr4gon-commits/anhdulieu@main/backroundtrng1-ezgif.com-coalesce.gif" as="image">
+    <link rel="preload" href="https://cdn.jsdelivr.net/gh/tropicaldr4gon-commits/ECAR@main/map1.png" as="image">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tracking.js/1.1.3/tracking-min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tracking.js/1.1.3/data/face-min.js"></script>
+
+    <style>
+        :root {
+            --neon-blue: #00f3ff;
+            --tech-blue: #0044ff;
+            --orange-border: #ff8800;
+            --white-text: #ffffff;
+            --red-alert: #ff3131;
+            --green-status: #39ff14;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body, html { 
+            width: 100%; height: 100%; overflow: hidden; 
+            background: #000; font-family: 'Segoe UI', Roboto, sans-serif; 
+        }
+
+        .app-container {
+            position: relative;
+            width: 100vw; height: 100vh;
+            max-width: 512px; margin: 0 auto;
+            background-color: #000; overflow: hidden;
+            box-shadow: 0 0 50px rgba(0, 243, 255, 0.1);
+        }
+
+        .screen {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: none; background-size: cover;
+            background-position: center;
+            transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+            perspective: 1000px;
+        }
+
+        .active { display: block; }
+
+        .btn-confirm-start {
+            position: absolute;
+            left: 18.95%;
+            top: 88.45%;
+            width: 61.66%;
+            height: 7.47%;
+            background-color: var(--orange-border);
+            border: 3px solid var(--tech-blue);
+            color: var(--white-text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: clamp(16px, 5vw, 24px);
+            text-transform: uppercase;
+            border-radius: 10px;
+            cursor: pointer;
+            z-index: 100;
+            animation: flashConfirm 0.8s infinite alternate;
+            transform: translateZ(0);
+            text-shadow: 0px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        @keyframes flashConfirm {
+            0% { opacity: 0.85; box-shadow: 0 0 8px var(--tech-blue); transform: scale(1); }
+            100% { opacity: 1; box-shadow: 0 0 25px var(--tech-blue), 0 0 15px var(--white-text); transform: scale(1.03); }
+        }
+
+        .btn-custom {
+            background: linear-gradient(145deg, var(--tech-blue), #0022aa);
+            border: 2px solid var(--neon-blue);
+            color: var(--white-text);
+            font-weight: bold; text-align: center;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; text-transform: uppercase;
+            border-radius: 8px; padding: 12px; font-size: 14px;
+            box-shadow: 0 4px 15px rgba(0, 243, 255, 0.3);
+            transition: all 0.2s ease;
+            transform: translateZ(0);
+        }
+        .btn-custom:active { transform: scale(0.95); box-shadow: 0 0 5px var(--neon-blue); }
+
+        .map-viewport {
+            width: 100%; height: 100%;
+            overflow: auto; 
+            position: relative;
+            scroll-behavior: smooth;
+            will-change: scroll-position;
+        }
+
+        .map-content {
+            position: relative;
+            width: 100%; 
+            height: auto;
+            aspect-ratio: 1440 / 2850;
+            background-size: 100% 100%;
+            transition: width 0.3s ease, height 0.3s ease;
+            will-change: transform, width, height;
+        }
+
+        .map-point {
+            position: absolute;
+            width: 4px; height: 4px; 
+            background-color: var(--red-alert);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 20;
+            box-shadow: 0 0 5px var(--red-alert), 0 0 10px var(--red-alert); 
+            cursor: pointer;
+            display: flex; justify-content: center; align-items: center;
+            color: #000; font-size: 4px; 
+            font-weight: bold;
+            will-change: transform;
+        }
+        .map-point::after {
+            content: ''; position: absolute; top: 50%; left: 50%;
+            width: 100%; height: 100%;
+            border: 0.5px solid var(--red-alert); border-radius: 50%;
+            transform: translate(-50%, -50%);
+            animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+        @keyframes pulse-ring {
+            0% { width: 4px; height: 4px; opacity: 1; }
+            100% { width: 36px; height: 36px; opacity: 0; } 
+        }
+
+        .driver-point {
+            position: absolute;
+            width: 24px; height: 24px; 
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 35;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5); 
+            border: 2px solid white; 
+            display: flex; justify-content: center; align-items: center;
+            color: white; font-size: 11px; 
+            font-weight: bold;
+            transition: all 0.3s ease;
+            will-change: transform, box-shadow;
+        }
+        .driver-point.waiting {
+            background-color: var(--orange-border);
+            box-shadow: 0 0 10px var(--orange-border);
+        }
+        .driver-point.confirmed {
+            background-color: var(--red-alert);
+            animation: pulse-driver 1.5s infinite; 
+        }
+        @keyframes pulse-driver {
+            0% { box-shadow: 0 0 0 0 rgba(255, 49, 49, 0.8); }
+            70% { box-shadow: 0 0 0 15px rgba(255, 49, 49, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 49, 49, 0); }
+        }
+
+        .notice-bar {
+            position: absolute; left: 0; top: 45%; width: 100%; height: 50px;
+            background: rgba(204, 0, 0, 0.9); border-top: 2px solid white; border-bottom: 2px solid white;
+            display: flex; align-items: center; overflow: hidden; z-index: 5;
+            transform: translateZ(0);
+        }
+        .marquee {
+            display: inline-block;
+            color: white; white-space: nowrap; font-weight: bold; font-size: 20px;
+            padding-left: 100%;
+            animation: scrollText 15s linear infinite;
+            will-change: transform;
+        }
+        @keyframes scrollText { 
+            0% { transform: translateX(0); } 
+            100% { transform: translateX(-100%); } 
+        }
+
+        .info-row { border-bottom: 1px solid rgba(0, 243, 255, 0.2); padding: 5px 0; font-size: 12px; }
+
+        input[type="text"], input[type="tel"], input[type="password"], input[type="number"], select {
+            padding: 15px; border: 2px solid var(--tech-blue); 
+            background: rgba(255, 255, 255, 0.9); border-radius: 8px;
+            font-size: 16px; width: 100%; outline: none;
+            color: #000;
+        }
+        input[type="text"]:focus, input[type="tel"]:focus, input[type="password"]:focus, input[type="number"]:focus, select:focus { border-color: var(--orange-border); }
+
+        input[readonly], select[disabled] {
+            background: rgba(200, 200, 200, 0.9);
+            cursor: not-allowed;
+            border-color: #666;
+        }
+
+        .map-overlay-box {
+            position: absolute; background: rgba(0, 20, 40, 0.85); border-radius: 8px;
+            color: white; display: flex; flex-direction: column; justify-content: center;
+            padding: 8px; z-index: 10;
+        }
+        .map-overlay-box a { text-decoration: none; font-weight: bold; }
+
+        .role-selector {
+            display: flex; justify-content: space-between; background: rgba(0, 20, 40, 0.85);
+            padding: 15px; border-radius: 8px; border: 2px solid var(--tech-blue);
+            color: white; font-size: 14px; font-weight: bold;
+        }
+        .role-selector label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+        .role-selector input[type="radio"] { width: 18px; height: 18px; cursor: pointer; }
+
+        .tech-scan-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; display: none; background: rgba(0, 243, 255, 0.05);
+        }
+        .tech-reticle {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 65%; height: 50%; border-left: 2px solid var(--neon-blue); border-right: 2px solid var(--neon-blue);
+        }
+        .tech-reticle::before, .tech-reticle::after {
+            content: ''; position: absolute; left: -2px; right: -2px; height: 20px;
+            border-left: 2px solid var(--neon-blue); border-right: 2px solid var(--neon-blue);
+        }
+        .tech-reticle::before { top: -2px; border-top: 2px solid var(--neon-blue); }
+        .tech-reticle::after { bottom: -2px; border-bottom: 2px solid var(--neon-blue); }
+
+        @keyframes scanLaserAnim {
+            0% { top: 10%; opacity: 0; } 10% { opacity: 1; }
+            90% { opacity: 1; } 100% { top: 90%; opacity: 0; }
+        }
+
+        .loading-dots::after {
+            content: ''; display: inline-block; width: 1em; text-align: left;
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        @keyframes dots {
+            0% { content: ''; } 25% { content: '.'; }
+            50% { content: '..'; } 75%, 100% { content: '...'; }
+        }
+
+        .modal-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 999; display: none;
+            flex-direction: column; justify-content: center; align-items: center; padding: 20px;
+        }
+
+        .history-item {
+            background: rgba(0, 243, 255, 0.1); border: 1px solid var(--neon-blue);
+            padding: 10px; margin-bottom: 10px; border-radius: 5px; font-size: 12px;
+        }
+
+        .task-input-container {
+            display: flex; gap: 5px; margin-bottom: 8px;
+        }
+        .task-input-container input {
+            padding: 5px 8px; font-size: 12px; height: 30px; 
+            background: rgba(255,255,255,0.1); color: white; 
+            border: 1px solid var(--tech-blue); border-radius: 4px; flex: 1;
+        }
+        .task-input-container input:focus { border-color: var(--neon-blue); }
+        .task-input-container button {
+            background: var(--tech-blue); border: 1px solid var(--neon-blue); 
+            color: white; font-weight: bold; width: 30px; height: 30px; 
+            border-radius: 4px; cursor: pointer; transition: 0.2s;
+        }
+        .task-input-container button:active { transform: scale(0.9); background: var(--neon-blue); }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--tech-blue); border-radius: 2px; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    
+    <div id="scr-welcome" class="screen active" style="background-image: url('https://github.com/tropicaldr4gon-commits/ECAR/blob/main/modau.gif?raw=true');">
+        <div class="btn-confirm-start" onclick="confirmWelcome()">
+            XÁC NHẬN ( Confirm )
+        </div>
+    </div>
+
+    <div id="scr-home" class="screen" style="background-image: url('https://cdn.jsdelivr.net/gh/tropicaldr4gon-commits/anhdulieu@main/mcu-ezgif.com-coalesce.gif');">
+        <div class="nav-group" style="position: absolute; left: 5%; top: calc(25% + 15px); width: 90%; display: flex; flex-direction: column; gap: 15px;">
+            <div class="btn-custom" style="background: var(--tech-blue); border: 2px solid var(--orange-border); color: var(--white-text); height: 60px;" onclick="openInputScreen()">CHỌN ĐIỂM ĐÓN CỦA BẠN</div>
+            <div class="btn-custom" style="background: var(--tech-blue); border: 2px solid var(--orange-border); color: var(--white-text); height: 60px;" onclick="checkDriverPassPrompt()">Chế độ Tài xế</div>
+        </div>
+        <div class="notice-bar">
+            <div class="marquee" id="home-marquee">AN TOÀN LÀ TRÊN HẾT</div>
+        </div>
+        <div id="gps-status-indicator" style="position: absolute; bottom: 5px; right: 5px; font-size: 8px; color: black; font-weight: bold; z-index: 100;">OFF</div>
+    </div>
+
+    <div id="scr-input" class="screen" style="background-image: url('https://cdn.jsdelivr.net/gh/tropicaldr4gon-commits/anhdulieu@main/backroundtrng1-ezgif.com-coalesce.gif'); overflow-y: auto;">
+        <div style="padding: 0 20px; display: flex; flex-direction: column; gap: 15px; margin-top: 130px; padding-bottom: 50px;">
+            <input type="text" id="user-name" placeholder="Tên của bạn">
+            <input type="tel" id="user-phone" placeholder="Số điện thoại liên lạc" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+            
+            <div class="role-selector">
+                <label><input type="radio" name="user-role" value="Nhân viên"> Nhân viên</label>
+                <label><input type="radio" name="user-role" value="Khách hàng, đối tác"> Khách hàng, đối tác</label>
+            </div>
+
+            <div id="camera-container" style="display: flex; flex-direction: column; align-items: center; gap: 10px; background: rgba(0,20,40,0.85); padding: 15px; border-radius: 8px; border: 2px solid var(--neon-blue); position: relative;">
+                <div id="scan-status" style="color: var(--orange-border); font-weight: bold; text-transform: uppercase; font-size: 13px; margin-bottom: 5px; text-align: center;">Đang khởi động Camera...</div>
+                
+                <div style="position: relative; width: 100%; max-width: 250px; aspect-ratio: 3/4; overflow: hidden; border-radius: 8px; border: 2px solid var(--tech-blue);">
+                    <video id="video-preview" autoplay playsinline webkit-playsinline muted style="width: 100%; height: 100%; object-fit: cover; background: #000;"></video>
+                    <canvas id="photo-canvas" style="display: none;"></canvas>
+                    <img id="photo-result" style="display: none; width: 100%; height: 100%; object-fit: cover; border: 2px solid var(--green-status); border-radius: 8px;" />
+                    
+                    <div id="scan-overlay" class="tech-scan-overlay">
+                        <div class="tech-reticle"></div>
+                        <div id="scan-line" style="width: 100%; height: 3px; background: var(--neon-blue); box-shadow: 0 0 15px var(--neon-blue), 0 0 30px var(--neon-blue); position: absolute; top: 10%; left: 0; animation: scanLaserAnim 1.8s ease-in-out infinite;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="btn-custom" style="height: 60px; margin-top: 10px; margin-bottom: 20px;" onclick="goMap()">Xác nhận & Chọn điểm đón</div>
+        </div>
+    </div>
+
+    <div id="scr-driver-reg" class="screen" style="background-image: url('https://cdn.jsdelivr.net/gh/tropicaldr4gon-commits/anhdulieu@main/backroundtrng1-ezgif.com-coalesce.gif'); overflow-y: auto;">
+        <div style="position: absolute; top: 10%; left: 5%; width: 90%; display: flex; flex-direction: column; gap: 10px;">
+            <input type="text" id="driver-name" placeholder="Họ và Tên Tài xế">
+            <input type="tel" id="driver-phone" placeholder="Số điện thoại" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+            
+            <select id="driver-car">
+                <option value="" disabled selected>Chọn số xe điện đang lái</option>
+            </select>
+            
+            <input type="text" id="driver-notice" placeholder="Thông báo gửi khách">
+            <div class="btn-custom" style="height: 60px; margin-top: 10px;" onclick="startDriverWork()">XÁC NHẬN BẮT ĐẦU</div>
+            
+            <div style="margin-top: 300px; text-align: center;">
+                <span style="color: var(--red-alert); font-size: 10px; cursor: pointer; padding: 10px;" onclick="showAdminAuth()">ADM_PAP</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="admin-auth-modal" class="modal-overlay">
+        <h3 style="color: var(--neon-blue); margin-bottom: 20px;">XÁC THỰC ADMIN</h3>
+        <input type="password" id="admin-secret-pass" placeholder="Nhập mật khẩu" style="margin-bottom: 20px;">
+        <div style="display: flex; gap: 10px; width: 100%;">
+            <div class="btn-custom" style="flex: 1; background: var(--red-alert);" onclick="closeAdminAuth()">HỦY</div>
+            <div class="btn-custom" style="flex: 1;" onclick="verifyAdminPass()">XÁC NHẬN</div>
+        </div>
+    </div>
+
+    <div id="driver-action-modal" class="modal-overlay">
+        <h3 style="color: var(--neon-blue); margin-bottom: 20px; text-align: center; text-transform: uppercase;">XỬ LÝ CHUYẾN ĐI</h3>
+        <p id="action-modal-info" style="color: white; margin-bottom: 20px; font-size: 14px; text-align: center;"></p>
+        
+        <div class="btn-custom" style="width: 100%; margin-bottom: 15px; background: var(--green-status); color: #000;" onclick="completeTripAction()">
+            1. ĐÃ ĐẾN ĐÓN (HOÀN THÀNH)
+        </div>
+        <div class="btn-custom" style="width: 100%; margin-bottom: 15px; background: var(--orange-border); color: #000;" onclick="transferTripAction()">
+            2. CHUYỂN CHO TÀI XẾ KHÁC
+        </div>
+        <div class="btn-custom" style="width: 100%; background: var(--red-alert);" onclick="closeDriverActionModal()">
+            ĐÓNG / HỦY BỎ
+        </div>
+    </div>
+
+    <div id="scr-admin" class="screen" style="background: #000; padding: 20px; color: white; overflow-y: auto;">
+        <h2 style="color: var(--neon-blue); text-align: center; margin-bottom: 20px; margin-top: 20px;">CÀI ĐẶT ADM_PAP</h2>
+        
+        <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid var(--tech-blue);">
+            <h4 style="margin-bottom: 10px;">1. Mật khẩu Tài xế</h4>
+            <div class="btn-custom" onclick="resetDriverPassword()">ĐẶT LẠI MẬT KHẨU TÀI XẾ</div>
+        </div>
+
+        <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid var(--tech-blue);">
+            <h4 style="margin-bottom: 10px;">2. Yêu cầu GPS Cảng (Bán kính 2km)</h4>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span id="gps-admin-status" style="font-weight: bold; color: var(--red-alert);">ĐANG TẮT</span>
+                <div class="btn-custom" style="padding: 8px 15px;" onclick="toggleGPS()">ĐỔI TRẠNG THÁI</div>
+            </div>
+        </div>
+
+        <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid var(--tech-blue);">
+            <h4 style="margin-bottom: 10px;">3. Tra cứu chuyến đi (Ca 12 tiếng hiện tại)</h4>
+            <div style="max-height: 300px; overflow-y: auto;" id="admin-trip-history">
+            </div>
+        </div>
+
+        <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid var(--tech-blue);">
+            <h4 style="margin-bottom: 10px;">4. Dữ liệu lịch sử <span style="font-size: 11px; font-weight: normal; color: #ccc;">(Lưu trong 120 giờ)</span></h4>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vQwdgOrNqyASCAaPGtc5ls4ouzoh5MiL2CyGv6CMELs0EqaNSuNxHRCldX9s2k8eTMHe_D4MdeW9s0e/pubhtml?gid=0&single=true" target="_blank" class="btn-custom" style="text-decoration: none; font-size: 13px;">1. Dữ liệu đặt xe</a>
+                <a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vRBAC9A_rTMV9MOGXYlJEiBrtywz7hyC9OIB_L-NiLj021oRq26faqjzJwrz2Dldl5dBFvjfOOjVliP/pubhtml?gid=0&single=true" target="_blank" class="btn-custom" style="text-decoration: none; font-size: 13px;">2. Dữ liệu tài xế vận hành</a>
+            </div>
+        </div>
+
+        <div class="btn-custom" style="background: var(--red-alert); margin-top: 20px;" onclick="location.reload()">THOÁT QUẢN TRỊ</div>
+    </div>
+
+    <div id="scr-map" class="screen">
+        <div class="map-viewport" id="viewport-client">
+            <div class="map-content" id="map-content-client" style="background-image: url('https://cdn.jsdelivr.net/gh/tropicaldr4gon-commits/ECAR@main/map1.png');">
+                
+                <div class="map-overlay-box" style="left: 32.85%; top: 0.88%; width: 61.46%; height: 11.68%; border: 2px solid var(--red-alert); box-shadow: 0 0 15px rgba(255,49,49,0.3);">
+                    <div style="color: var(--red-alert); font-weight: bold; font-size: clamp(11px, 3.5vw, 16px); text-align: center; margin-bottom: 4px; text-transform: uppercase;">Trong trường hợp khẩn cấp</div>
+                    <div style="font-size: clamp(10px, 3vw, 14px); text-align: center;">CSKH tại Cảng : <a href="tel:0329725379" style="color:var(--neon-blue);">0329725379</a></div>
+                    <div style="font-size: clamp(10px, 3vw, 14px); text-align: center;">An Ninh Cảng : <a href="tel:0337682239" style="color:var(--neon-blue);">0337682239</a></div>
+                </div>
+
+                <div class="map-overlay-box" style="left: 0.83%; top: 73.58%; width: 70.28%; height: 23.44%; border: 2px solid var(--orange-border); box-shadow: 0 0 15px rgba(255,136,0,0.3); justify-content: flex-start; padding: 8px; z-index: 40; pointer-events: auto;">
+                    <div style="color: var(--orange-border); font-weight: bold; font-size: clamp(10px, 3.5vw, 14px); text-align: center; margin-bottom: 5px; border-bottom: 1px solid var(--orange-border); padding-bottom: 5px; text-transform: uppercase;">Thông báo từ Tài xế</div>
+                    <div id="client-notice-content" style="overflow-y: auto; color: white; font-size: clamp(11px, 3vw, 13px); text-align: center; display: flex; align-items: center; justify-content: center; height: 100%;">
+                        AN TOÀN LÀ TRÊN HẾT
+                    </div>
+                </div>
+
+                <div style="position: absolute; left: 11.53%; top: 69.61%; width: 57.50%; height: 2.14%; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 50;">
+                    <span style="background: rgba(0,0,0,0.8); color: #fff; padding: 4px 10px; border-radius: 20px; border: 1px solid var(--neon-blue); box-shadow: 0 0 10px var(--neon-blue); font-weight: bold; font-size: clamp(8px, 2.5vw, 12px); white-space: nowrap; text-align: center;">Chạm vào vị trí bạn đang đứng để gọi xe</span>
+                </div>
+
+                <div id="points-container" style="width:100%; height:100%; position:absolute; top:0; left:0;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading-view" class="screen" style="background: radial-gradient(circle, #001133, #000); color: white; display: none; flex-direction: column; justify-content: center; align-items: center; padding: 20px;">
+        <div id="loading-spinner" style="width: 70px; height: 70px; border: 5px solid rgba(0, 243, 255, 0.2); border-top: 5px solid var(--neon-blue); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        
+        <h2 id="status-text" style="margin-top: 30px; font-size: 16px; line-height: 1.5; text-align: center; letter-spacing: 1px;">ĐANG CHỜ KẾT NỐI TÀI XẾ<span class="loading-dots"></span><br>VUI LÒNG CHỜ TRONG CHỐC LÁT VÀ ĐỪNG THOÁT ỨNG DỤNG</h2>
+        
+        <div id="driver-arrival-info" style="display:none; text-align: center; width: 90%; margin-top: 20px; background: rgba(0,243,255,0.1); padding: 20px; border-radius: 10px; border: 1px solid var(--neon-blue);">
+            <h2 style="color: var(--green-status); margin-bottom: 15px; text-transform: uppercase;">Tài xế đang đến</h2>
+            <p id="txt-driver-name" style="font-weight: bold; font-size: 18px;"></p>
+            <p id="txt-driver-car" style="margin-bottom: 15px; color: var(--neon-blue);"></p>
+            
+            <div style="background: rgba(0,0,0,0.5); padding: 10px; border-radius: 8px;">
+                <p style="font-size: 12px; color: #ccc;">Thời gian chờ tối đa</p>
+                <p id="txt-countdown" style="color: var(--orange-border); font-size: 28px; font-weight: bold;">10:00</p>
+                <p id="txt-driver-phone" style="color: var(--neon-blue); font-weight: bold; font-size: 18px; margin-top: 10px; display: none;"></p>
+            </div>
+
+            <div class="btn-custom" style="margin-top: 20px; height: 50px;" onclick="finishTrip()">TÔI ĐÃ LÊN XE</div>
+        </div>
+        
+        <button id="cancel-btn" class="btn-custom" style="background: var(--red-alert); margin-top: 40px; border: none; width: 60%;" onclick="cancelOrder()">HỦY YÊU CẦU</button>
+    </div>
+
+    <div id="scr-driver-map" class="screen">
+        <div class="map-viewport" id="viewport-driver">
+            <div class="map-content" id="map-content-driver" style="background-image: url('https://cdn.jsdelivr.net/gh/tropicaldr4gon-commits/ECAR@main/map1.png');">
+                
+                <div class="map-overlay-box" style="left: 32.85%; top: 0.88%; width: 61.46%; height: 12%; border: 2px solid var(--red-alert); box-shadow: 0 0 15px rgba(255,49,49,0.3); justify-content: flex-start; padding: 5px; z-index: 40; pointer-events: auto;">
+                    <div style="color: var(--red-alert); font-weight: bold; font-size: clamp(10px, 3.5vw, 13px); text-align: center; margin-bottom: 2px; border-bottom: 1px solid var(--red-alert); padding-bottom: 2px; text-transform: uppercase;">Thông tin khách đặt chuyến</div>
+                    <div id="driver-dashboard" style="overflow-y: auto; width: 100%; height: 100%;"></div>
+                </div>
+
+                <div class="map-overlay-box" style="left: 4.31%; top: 74.00%; width: 63.75%; height: 23.93%; border: 2px solid var(--neon-blue); box-shadow: 0 0 15px rgba(0,243,255,0.3); justify-content: flex-start; padding: 8px; z-index: 40; pointer-events: auto;">
+                    <div style="color: var(--neon-blue); font-weight: bold; font-size: clamp(11px, 3vw, 14px); margin-bottom: 5px; border-bottom: 1px solid var(--neon-blue); padding-bottom: 5px; text-transform: uppercase;">NHIỆM VỤ TRONG NGÀY</div>
+                    
+                    <div class="task-input-container">
+                        <input type="text" id="new-task-input" placeholder="Thêm việc cần làm..." onkeypress="if(event.key === 'Enter') addNewTask()">
+                        <button onclick="addNewTask()">+</button>
+                    </div>
+                    
+                    <div id="task-list" style="overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 6px;">
+                    </div>
+                </div>
+
+                <div id="driver-base-points-container" style="width:100%; height:100%; position:absolute; top:0; left:0; pointer-events: none; z-index: 20;"></div>
+                <div id="driver-points-container" style="width:100%; height:100%; position:absolute; top:0; left:0; z-index: 30;"></div>
+
+                <button class="btn-custom logout-map-btn" style="position: absolute; left: 71.805%; top: 76.28%; width: 12.916%; height: 8.35%; font-size: clamp(8px, 2.5vw, 14px); z-index: 50; background: var(--red-alert); border-color: white; padding: 2px;" onclick="location.reload()">ĐĂNG XUẤT</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const carSelect = document.getElementById('driver-car');
+        if(carSelect) {
+            for(let i = 1; i <= 20; i++) {
+                let val = i < 10 ? '0' + i : i.toString();
+                let opt = document.createElement('option');
+                opt.value = val;
+                opt.text = "Xe điện số " + val;
+                carSelect.appendChild(opt);
+            }
+        }
+    });
+
+    function enterFullScreen() {
+        const doc = window.document;
+        const docEl = doc.documentElement;
+        const requestFullScreen = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullScreen || docEl.msRequestFullscreen;
+        if(!doc.fullscreenElement && !doc.mozFullScreenElement && !doc.webkitFullscreenElement && !doc.msFullscreenElement) {
+            if(requestFullScreen) {
+                requestFullScreen.call(docEl).catch(err => {
+                    console.log(`Không thể tự động bật Fullscreen: ${err.message}`);
+                });
+            }
+        }
+    }
+
+    // Chuyển màn hình
+    function confirmWelcome() {
+        enterFullScreen();
+        changeScreen('scr-home');
+    }
+
+    // KẾT NỐI FIREBASE
+    const firebaseConfig = {
+        apiKey: "AIzaSyC9qQ9UxlipawTBYVPNR-8uZXJDqyLZuMQM",
+        authDomain: "dichuyennoibo.firebaseapp.com",
+        databaseURL: "https://dichuyennoibo-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "dichuyennoibo",
+        storageBucket: "dichuyennoibo.firebasestorage.app",
+        messagingSenderId: "185735345883",
+        appId: "1:185735345883:web:1c120cbcbe467206fcbefe"
+    };
+
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    const database = firebase.database();
+
+    const coords = [
+        {x: 1292, y: 2584}, {x: 1292, y: 2383}, {x: 1293, y: 2076}, {x: 1290, y: 1852},
+        {x: 1293, y: 1566}, {x: 1290, y: 1328}, {x: 1291, y: 1023}, {x: 1289, y: 834},
+        {x: 1293, y: 529}, {x: 1000, y: 1123}, {x: 1028, y: 946}, {x: 202, y: 1631},
+        {x: 174, y: 1686}, {x: 241, y: 1392}, {x: 331, y: 828}, {x: 983, y: 1731},
+        {x: 1019, y: 1478}, {x: 377, y: 1913}, {x: 567, y: 1914}, {x: 601, y: 1690},
+        {x: 475, y: 1695}, {x: 449, y: 1694}, {x: 319, y: 1695}, {x: 291, y: 1475},
+        {x: 385, y: 1477}, {x: 572, y: 1472}, {x: 571, y: 1420}, {x: 385, y: 1423},
+        {x: 332, y: 1205}, {x: 604, y: 1202}, {x: 484, y: 1201}, {x: 445, y: 1203},
+        {x: 388, y: 960}, {x: 573, y: 950}, {x: 573, y: 908}, {x: 711, y: 685},
+        {x: 608, y: 683}, {x: 491, y: 684}, {x: 576, y: 440}
+    ];
+
+    let myBookingId = null;
+    let pickupPoint = null;
+    let currentZoomClient = 100;
+    let currentZoomDriver = 100;
+    let countdownInterval;
+    let isClientActionDone = false; 
+
+    let cameraStream = null;
+    let isPhotoCaptured = false;
+    let faceTracker = null;
+    let trackingTask = null;
+    let scanTimeout;
+    let captureTimer = null; 
+    let globalCapturedImageBase64 = "";
+
+    let currentDriverPass = "1a@";
+    let currentAdminPass = "abc123@"; 
+    let isGPSRequired = false;
+    const PORT_LAT = 10.6161426;
+    const PORT_LON = 106.993797;
+
+    let selectedTripForAction = null; 
+
+    database.ref('settings').on('value', (snapshot) => {
+        const data = snapshot.val() || {};
+        currentDriverPass = data.driverPassword || "1a@";
+        currentAdminPass = data.adminPassword || "abc123@"; 
+        isGPSRequired = data.requireGPS || false;
+
+        document.getElementById('gps-status-indicator').innerText = isGPSRequired ? "ON" : "OFF";
+        
+        const gpsAdminStatus = document.getElementById('gps-admin-status');
+        if(gpsAdminStatus) {
+            gpsAdminStatus.innerText = isGPSRequired ? "ĐANG BẬT" : "ĐANG TẮT";
+            gpsAdminStatus.style.color = isGPSRequired ? "var(--green-status)" : "var(--red-alert)";
+        }
+    });
+
+    function changeScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+        const target = document.getElementById(id);
+        if (id === 'loading-view') target.style.display = 'flex';
+        else target.style.display = 'block';
+    }
+
+    function openInputScreen() {
+        enterFullScreen(); 
+        changeScreen('scr-input');
+        
+        const savedUserName = localStorage.getItem('user_name');
+        const savedUserPhone = localStorage.getItem('user_phone');
+        const savedUserRole = localStorage.getItem('user_role');
+        const isClientLocked = localStorage.getItem('info_locked_client');
+        
+        const nameInput = document.getElementById('user-name');
+        const phoneInput = document.getElementById('user-phone');
+
+        if (savedUserName) nameInput.value = savedUserName;
+        if (savedUserPhone) phoneInput.value = savedUserPhone;
+        if (savedUserRole) {
+            const roleRadio = document.querySelector(`input[name="user-role"][value="${savedUserRole}"]`);
+            if (roleRadio) roleRadio.checked = true;
+        }
+
+        if (isClientLocked === 'true') {
+            nameInput.readOnly = true;
+            phoneInput.readOnly = true;
+        }
+
+        startCamera();
+    }
+
+    async function startCamera() {
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+            const video = document.getElementById('video-preview');
+            video.srcObject = cameraStream;
+            
+            video.onloadedmetadata = () => {
+                video.width = video.videoWidth;
+                video.height = video.videoHeight;
+                startAutoScan();
+            };
+        } catch (err) {
+            console.error("Lỗi truy cập camera:", err);
+            document.getElementById('scan-status').innerHTML = "Lỗi Camera: Vui lòng cấp quyền truy cập máy ảnh và đảm bảo chạy trên link bảo mật (HTTPS).";
+            document.getElementById('scan-status').style.color = "var(--red-alert)";
+        }
+    }
+
+    function startAutoScan() {
+        isPhotoCaptured = false;
+        
+        document.getElementById('scan-overlay').style.display = 'block';
+        document.getElementById('scan-status').innerText = "Đang quét nhận diện khuôn mặt...";
+        document.getElementById('scan-status').style.color = "var(--neon-blue)";
+        document.getElementById('video-preview').style.border = "2px solid var(--neon-blue)";
+        
+        if(trackingTask) trackingTask.stop();
+        clearTimeout(scanTimeout);
+        if(captureTimer) { clearTimeout(captureTimer); captureTimer = null; }
+        
+        scanTimeout = setTimeout(() => {
+            if(trackingTask) trackingTask.stop();
+            stopCamera();
+            alert("Hết 30 giây! Không tìm thấy khuôn mặt rõ ràng. Ứng dụng sẽ tự động thoát.");
+            location.reload(); 
+        }, 30000);
+        
+        if (!faceTracker) {
+            faceTracker = new tracking.ObjectTracker('face');
+            faceTracker.setInitialScale(4);
+            faceTracker.setStepSize(2);
+            faceTracker.setEdgesDensity(0.1);
+            
+            faceTracker.on('track', function(event) {
+                if (isPhotoCaptured) return;
+                
+                if (event.data.length > 0) {
+                    if (!captureTimer) {
+                        document.getElementById('scan-status').innerText = "Giữ yên khuôn mặt trong 1 giây...";
+                        document.getElementById('scan-status').style.color = "var(--orange-border)";
+                        
+                        captureTimer = setTimeout(() => {
+                            if(trackingTask) trackingTask.stop();
+                            clearTimeout(scanTimeout);
+                            autoCapturePhoto();
+                        }, 1000);
+                    }
+                } else {
+                    if (captureTimer) {
+                        clearTimeout(captureTimer);
+                        captureTimer = null;
+                        document.getElementById('scan-status').innerText = "Đang quét nhận diện khuôn mặt...";
+                        document.getElementById('scan-status').style.color = "var(--neon-blue)";
+                    }
+                }
+            });
+        }
+        trackingTask = tracking.track('#video-preview', faceTracker);
+    }
+
+    function autoCapturePhoto() {
+        if(!cameraStream) return;
+        const video = document.getElementById('video-preview');
+        const canvas = document.getElementById('photo-canvas');
+        const img = document.getElementById('photo-result');
+        
+        canvas.width = video.videoWidth || 480;
+        canvas.height = video.videoHeight || 640;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        const base64DataUrl = canvas.toDataURL('image/jpeg', 0.5);
+        img.src = base64DataUrl;
+        globalCapturedImageBase64 = base64DataUrl.split(',')[1];
+        
+        video.style.display = 'none';
+        document.getElementById('scan-overlay').style.display = 'none';
+        img.style.display = 'block';
+        
+        document.getElementById('scan-status').innerText = "Đã xác thực khuôn mặt thành công";
+        document.getElementById('scan-status').style.color = "var(--green-status)";
+        
+        isPhotoCaptured = true;
+    }
+
+    function stopCamera() {
+        if(trackingTask) trackingTask.stop();
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(track => track.stop());
+            cameraStream = null;
+        }
+    }
+
+    function checkDriverPassPrompt() {
+        enterFullScreen(); 
+        if(prompt("Nhập mã định danh tài xế:") === currentDriverPass) {
+            database.ref('global_notice').once('value').then(snap => {
+                const currentNotice = snap.val();
+                if(currentNotice && currentNotice.trim() !== "") {
+                    document.getElementById('driver-notice').value = currentNotice;
+                } else {
+                    document.getElementById('driver-notice').value = "";
+                }
+                
+                const savedDriverDataStr = localStorage.getItem('driver_data');
+                const isDriverLocked = localStorage.getItem('info_locked_driver');
+                
+                const nameInput = document.getElementById('driver-name');
+                const phoneInput = document.getElementById('driver-phone');
+                const carSelect = document.getElementById('driver-car');
+
+                if (savedDriverDataStr) {
+                    try {
+                        const savedDriverData = JSON.parse(savedDriverDataStr);
+                        if (savedDriverData.name) nameInput.value = savedDriverData.name;
+                        if (savedDriverData.phone) phoneInput.value = savedDriverData.phone;
+                        if (savedDriverData.car) carSelect.value = savedDriverData.car;
+                    } catch(e) { console.error("Lỗi đọc dữ liệu tài xế:", e); }
+                }
+
+                if (isDriverLocked === 'true') {
+                    nameInput.readOnly = true;
+                    phoneInput.readOnly = true;
+                }
+
+                changeScreen('scr-driver-reg'); 
+            });
+        } else {
+            alert("Mã định danh không đúng!");
+        }
+    }
+
+    function showAdminAuth() {
+        document.getElementById('admin-auth-modal').style.display = 'flex';
+        document.getElementById('admin-secret-pass').value = '';
+    }
+
+    function closeAdminAuth() {
+        document.getElementById('admin-auth-modal').style.display = 'none';
+    }
+
+    function verifyAdminPass() {
+        const pass = document.getElementById('admin-secret-pass').value;
+        if(pass === currentAdminPass) {
+            closeAdminAuth();
+            changeScreen('scr-admin');
+            loadAdminTripHistory();
+        } else {
+            alert("Sai mật khẩu quản trị!");
+        }
+    }
+
+    function resetDriverPassword() {
+        const newPass = prompt("Nhập mật khẩu Tài xế mới:", currentDriverPass);
+        if(newPass && newPass.trim() !== "") {
+            database.ref('settings/driverPassword').set(newPass.trim());
+            alert("Đã cập nhật mật khẩu tài xế thành công!");
+        }
+    }
+
+    function toggleGPS() {
+        const newState = !isGPSRequired;
+        database.ref('settings/requireGPS').set(newState);
+    }
+
+    let adminHistoryData = {};
+    let adminActiveData = {};
+
+    function isWithinCurrentShift(timestamp) {
+        const now = new Date();
+        const currentHour = now.getHours();
+        
+        let shiftStart, shiftEnd;
+        
+        if (currentHour >= 7 && currentHour < 19) {
+            shiftStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 7, 0, 0).getTime();
+            shiftEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 19, 0, 0).getTime();
+        } else {
+            if (currentHour >= 19) {
+                shiftStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 19, 0, 0).getTime();
+                let nextDay = new Date(now);
+                nextDay.setDate(now.getDate() + 1);
+                shiftEnd = new Date(nextDay.getFullYear(), nextDay.getMonth(), nextDay.getDate(), 7, 0, 0).getTime();
+            } else {
+                let prevDay = new Date(now);
+                prevDay.setDate(now.getDate() - 1);
+                shiftStart = new Date(prevDay.getFullYear(), prevDay.getMonth(), prevDay.getDate(), 19, 0, 0).getTime();
+                shiftEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 7, 0, 0).getTime();
+            }
+        }
+        return timestamp >= shiftStart && timestamp < shiftEnd;
+    }
+
+    function renderAdminHistoryUI() {
+        const container = document.getElementById('admin-trip-history');
+        container.innerHTML = '';
+        let allTrips = [];
+        
+        Object.values(adminHistoryData).forEach(t => allTrips.push(t));
+        Object.values(adminActiveData).forEach(t => allTrips.push(t));
+
+        allTrips = allTrips.filter(t => isWithinCurrentShift(t.endTime || t.time));
+        
+        if(allTrips.length === 0) {
+            container.innerHTML = '<p style="font-size:12px; color:#aaa;">Chưa có chuyến đi nào trong ca hiện tại.</p>';
+            return;
+        }
+        
+        allTrips.sort((a,b) => (b.endTime || b.time) - (a.endTime || a.time));
+        
+        allTrips.forEach(item => {
+            const date = new Date(item.endTime || item.time).toLocaleString('vi-VN');
+            let statusColor, statusText;
+            
+            if(item.finalStatus === 'completed') { 
+                statusColor = 'var(--green-status)'; statusText = 'Hoàn thành'; 
+            } else if(item.finalStatus === 'cancelled') { 
+                statusColor = 'var(--red-alert)'; statusText = 'Đã Hủy'; 
+            } else if(item.status === 'confirmed') { 
+                statusColor = 'var(--neon-blue)'; statusText = 'Tài xế Đang đón'; 
+            } else { 
+                statusColor = 'var(--orange-border)'; statusText = 'Khách Đang đợi'; 
+            }
+
+            const driverText = item.driver ? item.driver.name : 'Chưa có';
+
+            container.innerHTML += `
+                <div class="history-item">
+                    <strong>Khách:</strong> ${item.name} (${item.role}) - ${item.phone}<br>
+                    <strong>Tài xế:</strong> ${driverText}<br>
+                    <strong>Trạm:</strong> ${item.pointIndex} | <strong>Giờ:</strong> ${date}<br>
+                    <strong style="color: ${statusColor}">${statusText}</strong>
+                </div>
+            `;
+        });
+    }
+
+    function loadAdminTripHistory() {
+        let histRef = database.ref('trip_history');
+        if(typeof histRef.limitToLast === 'function') {
+            histRef = histRef.limitToLast(50);
+        }
+        
+        histRef.on('value', snap => {
+            adminHistoryData = snap.val() || {};
+            renderAdminHistoryUI();
+        });
+        
+        database.ref('bookings').on('value', snap => {
+            adminActiveData = snap.val() || {};
+            renderAdminHistoryUI();
+        });
+    }
+
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371; 
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c; 
+    }
+
+    function processGoMap(role) {
+        stopCamera();
+        changeScreen('scr-map');
+        let mapContainer = document.getElementById('viewport-client');
+        currentZoomClient = (mapContainer.clientWidth / 1440) * 100;
+        zoomMap('client', 0); 
+        renderPoints(role.value); 
+    }
+
+    function goMap() {
+        const name = document.getElementById('user-name').value;
+        const phone = document.getElementById('user-phone').value;
+        const role = document.querySelector('input[name="user-role"]:checked');
+
+        if(!name) return alert("Vui lòng nhập tên của bạn!");
+        if(!phone) return alert("Vui lòng nhập số điện thoại liên lạc!");
+        if(!role) return alert("Vui lòng chọn đối tượng!");
+        if(!isPhotoCaptured) return alert("Hệ thống đang quét, vui lòng đưa khuôn mặt vào khung Camera!");
+
+        if (localStorage.getItem('info_locked_client') !== 'true') {
+            if (confirm("Xác nhận Họ Tên và Số điện thoại là chính xác?\nThông tin này sẽ được lưu cố định trên thiết bị này và không thể sửa đổi.")) {
+                localStorage.setItem('info_locked_client', 'true');
+            } else {
+                return; 
+            }
+        }
+
+        localStorage.setItem('user_name', name);
+        localStorage.setItem('user_phone', phone);
+        localStorage.setItem('user_role', role.value);
+
+        if(isGPSRequired) {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const dist = calculateDistance(position.coords.latitude, position.coords.longitude, PORT_LAT, PORT_LON);
+                        if(dist <= 2) { 
+                            processGoMap(role);
+                        } else {
+                            alert("Bạn đang ở ngoài bán kính cho phép đặt xe (2km từ Cảng Phước An). Không thể đặt chuyến!");
+                        }
+                    },
+                    (error) => {
+                        alert("Không thể định vị GPS! Vui lòng cấp quyền vị trí để gọi xe.");
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            } else {
+                alert("Thiết bị của bạn không hỗ trợ định vị GPS!");
+            }
+        } else {
+            processGoMap(role);
+        }
+    }
+
+    function zoomMap(type, amount) {
+        if(type === 'client') {
+            currentZoomClient += amount;
+            if(currentZoomClient < 20) currentZoomClient = 20; 
+            if(currentZoomClient > 300) currentZoomClient = 300;
+            document.getElementById('map-content-client').style.width = (1440 * currentZoomClient / 100) + 'px';
+            document.getElementById('map-content-client').style.height = (2850 * currentZoomClient / 100) + 'px';
+        } else {
+            currentZoomDriver += amount;
+            if(currentZoomDriver < 20) currentZoomDriver = 20;
+            if(currentZoomDriver > 300) currentZoomDriver = 300;
+            document.getElementById('map-content-driver').style.width = (1440 * currentZoomDriver / 100) + 'px';
+            document.getElementById('map-content-driver').style.height = (2850 * currentZoomDriver / 100) + 'px';
+        }
+    }
+
+    function renderPoints(userRole) {
+        const container = document.getElementById('points-container');
+        container.innerHTML = '';
+        pickupPoint = null;
+
+        coords.forEach((p, index) => {
+            const dot = document.createElement('div');
+            dot.className = 'map-point';
+            dot.style.left = (p.x / 14.4) + '%';
+            dot.style.top = (p.y / 28.5) + '%';
+            dot.innerText = index + 1;
+            
+            dot.onclick = () => {
+                if (confirm(`Bạn muốn gọi xe tại Trạm số ${index + 1}?`)) {
+                    pickupPoint = { x: p.x, y: p.y, index: index + 1 };
+                    confirmBooking(pickupPoint.x, pickupPoint.y, pickupPoint.index, userRole);
+                }
+            };
+            container.appendChild(dot);
+        });
+    }
+
+    const GOOGLE_APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjnINGZZoTkg6p1c5TB10-gVANj7gkdytJqH_OTEn5REssYNXJJdz6KjEOa_t0G3Tp/exec";
+    const PASSENGER_SHEET_ID = "1ixpVziYnoah3hOCE0aT3GQLRYb6E3w9-U8-XiXXt4Ts";
+    const DRIVER_SHEET_ID = "158nR0CNaI-BWcvFEcouV3ESIEH5XCAmF5lWx-6rjBeg";
+    const IMAGE_FOLDER_ID = "1pZcbKfI0yLHqgMoEGI77916Sl5nZDi42";
+
+    function getDeviceName() {
+        const ua = navigator.userAgent;
+        if (/android/i.test(ua)) return "Android";
+        if (/iPad|iPhone|iPod/.test(ua)) return "iOS";
+        if (/Windows/.test(ua)) return "Windows PC";
+        if (/Mac OS/.test(ua)) return "Mac";
+        return "Thiết bị khác";
+    }
+
+    function confirmBooking(x, y, pointIndex, userRole) {
+        myBookingId = Date.now();
+        const userName = document.getElementById('user-name').value;
+        const userPhone = document.getElementById('user-phone').value;
+        
+        const data = {
+            id: myBookingId, 
+            x: x, y: y,
+            pointIndex: pointIndex,
+            name: userName,
+            phone: userPhone,
+            role: userRole,
+            status: 'waiting',
+            time: myBookingId
+        };
+        database.ref('bookings/' + myBookingId).set(data);
+        changeScreen('loading-view');
+        listenToMyBooking();
+
+        const payload = {
+            action: 'booking',
+            time: new Date().toLocaleString('vi-VN'),
+            role: userRole,
+            name: userName,
+            phone: userPhone,
+            device: getDeviceName(),
+            point: pointIndex,
+            imageFolderId: IMAGE_FOLDER_ID,
+            imageBase64: globalCapturedImageBase64,
+            sheetId: PASSENGER_SHEET_ID
+        };
+        
+        fetch(GOOGLE_APP_SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(payload)
+        }).then(res => console.log("Đã gửi yêu cầu lưu khách"))
+          .catch(err => console.log("Lỗi đồng bộ dữ liệu khách:", err));
+    }
+
+    function startCountdown(driverPhone) {
+        let timeLeft = 600; 
+        const countdownEl = document.getElementById('txt-countdown');
+        const phoneEl = document.getElementById('txt-driver-phone');
+        
+        clearInterval(countdownInterval); 
+        
+        countdownInterval = setInterval(() => {
+            timeLeft--;
+            let m = Math.floor(timeLeft / 60);
+            let s = timeLeft % 60;
+            countdownEl.innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
+            
+            if (timeLeft <= 0) {
+                clearInterval(countdownInterval);
+                countdownEl.style.display = 'none';
+                phoneEl.innerText = "SĐT Tài xế: " + driverPhone;
+                phoneEl.style.display = 'block';
+            }
+        }, 1000);
+    }
+
+    function listenToMyBooking() {
+        database.ref('bookings/' + myBookingId).on('value', (snapshot) => {
+            if (isClientActionDone) return; 
+
+            const data = snapshot.val();
+            
+            if (data === null) {
+                const arrivalInfo = document.getElementById('driver-arrival-info');
+                const isConfirmed = arrivalInfo ? (arrivalInfo.style.display === 'block') : false;
+                
+                if (isConfirmed) {
+                    isClientActionDone = true; 
+                    clearInterval(countdownInterval);
+                    const loadingView = document.getElementById('loading-view');
+                    loadingView.innerHTML = `
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%;">
+                            <h2 style="color: var(--green-status); text-align: center; font-size: 28px; text-transform: uppercase; text-shadow: 0 0 20px var(--green-status); padding: 20px;">
+                                CHÚC BẠN MỘT NGÀY AN TOÀN, VUI VẺ
+                            </h2>
+                        </div>
+                    `;
+                    setTimeout(() => { location.reload(); }, 3000);
+                } else {
+                    location.reload();
+                }
+                return;
+            }
+
+            if (data && data.status === 'confirmed') {
+                document.getElementById('loading-spinner').style.display = 'none';
+                document.getElementById('status-text').style.display = 'none';
+                
+                document.getElementById('txt-driver-name').innerText = "Tài xế: " + data.driver.name;
+                document.getElementById('txt-driver-car').innerText = "Số xe: " + data.driver.car;
+                document.getElementById('driver-arrival-info').style.display = 'block';
+                document.getElementById('cancel-btn').style.display = 'none';
+
+                if (!countdownInterval) {
+                    startCountdown(data.driver.phone);
+                }
+            } else if (data && data.status === 'waiting' && document.getElementById('driver-arrival-info').style.display === 'block') {
+                clearInterval(countdownInterval);
+                document.getElementById('driver-arrival-info').style.display = 'none';
+                document.getElementById('loading-spinner').style.display = 'block';
+                document.getElementById('status-text').style.display = 'block';
+                document.getElementById('cancel-btn').style.display = 'block';
+                document.getElementById('status-text').innerText = "Tài xế trước đã bận.\nĐANG TÌM TÀI XẾ KHÁC...";
+            }
+        });
+    }
+
+    function cancelOrder() {
+        if(myBookingId) {
+            isClientActionDone = true; 
+            database.ref('bookings/' + myBookingId).once('value').then(snap => {
+                let d = snap.val();
+                if(d) {
+                    d.finalStatus = 'cancelled';
+                    d.endTime = Date.now();
+                    database.ref('bookings/' + myBookingId).remove().then(() => {
+                        database.ref('trip_history/' + myBookingId).set(d).then(() => {
+                            clearInterval(countdownInterval);
+                            location.reload();
+                        });
+                    });
+                } else {
+                    location.reload();
+                }
+            });
+        } else {
+            location.reload();
+        }
+    }
+
+    function finishTrip() {
+        if(myBookingId) {
+            isClientActionDone = true; 
+            clearInterval(countdownInterval);
+            
+            const loadingView = document.getElementById('loading-view');
+            loadingView.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%;">
+                    <h2 style="color: var(--green-status); text-align: center; font-size: 28px; text-transform: uppercase; text-shadow: 0 0 20px var(--green-status); padding: 20px;">
+                        CHÚC BẠN MỘT NGÀY AN TOÀN, VUI VẺ
+                    </h2>
+                </div>
+            `;
+            
+            setTimeout(() => { location.reload(); }, 3000);
+
+            database.ref('bookings/' + myBookingId).once('value').then(snap => {
+                let d = snap.val();
+                if(d) {
+                    d.finalStatus = 'completed';
+                    d.endTime = Date.now();
+                    database.ref('bookings/' + myBookingId).remove().then(() => {
+                        database.ref('trip_history/' + myBookingId).set(d);
+                    });
+                }
+            });
+        }
+    }
+
+    let driverTasks = [];
+
+    database.ref('driver_tasks').on('value', (snapshot) => {
+        const now = Date.now();
+        const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+        let rawTasks = snapshot.val() || [];
+        
+        let validTasks = rawTasks.filter(task => {
+            const ts = task.timestamp || now; 
+            return (now - ts) <= ONE_DAY_MS;
+        });
+
+        if (validTasks.length < rawTasks.length) {
+            database.ref('driver_tasks').set(validTasks);
+            return; 
+        }
+
+        driverTasks = validTasks;
+        renderTasks();
+    });
+
+    function renderTasks() {
+        const list = document.getElementById('task-list');
+        if(!list) return;
+        list.innerHTML = '';
+        
+        driverTasks.forEach((task, index) => {
+            const item = document.createElement('div');
+            item.style.display = 'flex';
+            item.style.alignItems = 'center';
+            item.style.gap = '8px';
+            item.style.fontSize = '12px';
+            item.style.color = 'white';
+            
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.checked = task.completed;
+            cb.style.width = '14px';
+            cb.style.height = '14px';
+            cb.style.cursor = 'pointer';
+            cb.style.accentColor = 'var(--neon-blue)';
+            cb.onchange = () => {
+                driverTasks[index].completed = cb.checked;
+                database.ref('driver_tasks').set(driverTasks);
+            };
+
+            const text = document.createElement('span');
+            text.innerText = task.text;
+            text.style.flex = '1';
+            text.style.cursor = 'pointer';
+            text.style.textDecoration = task.completed ? 'line-through' : 'none';
+            text.style.color = task.completed ? '#888' : 'white';
+            text.onclick = () => { cb.click(); }; 
+
+            const delBtn = document.createElement('button');
+            delBtn.innerText = 'X';
+            delBtn.style.background = 'transparent';
+            delBtn.style.border = 'none';
+            delBtn.style.color = 'var(--red-alert)';
+            delBtn.style.cursor = 'pointer';
+            delBtn.style.fontWeight = 'bold';
+            delBtn.style.padding = '0 5px';
+            delBtn.onclick = () => {
+                driverTasks.splice(index, 1);
+                database.ref('driver_tasks').set(driverTasks);
+            };
+
+            item.appendChild(cb);
+            item.appendChild(text);
+            item.appendChild(delBtn);
+            list.appendChild(item);
+        });
+    }
+
+    function addNewTask() {
+        const input = document.getElementById('new-task-input');
+        if(!input || input.value.trim() === '') return;
+        
+        driverTasks.push({
+            text: input.value.trim(),
+            completed: false,
+            timestamp: Date.now()
+        });
+        
+        database.ref('driver_tasks').set(driverTasks);
+        input.value = '';
+    }
+
+    function startDriverWork() {
+        const d = {
+            name: document.getElementById('driver-name').value,
+            phone: document.getElementById('driver-phone').value,
+            car: document.getElementById('driver-car').value,
+            notice: document.getElementById('driver-notice').value
+        };
+        if(!d.name || !d.car || !d.phone) return alert("Vui lòng điền đủ thông tin Tên, SĐT và Số xe!");
+        
+        if (localStorage.getItem('info_locked_driver') !== 'true') {
+            if (confirm("Xác nhận Họ Tên và Số điện thoại là chính xác?\nThông tin này sẽ được lưu cố định trên thiết bị này và không thể sửa đổi.")) {
+                localStorage.setItem('info_locked_driver', 'true');
+            } else {
+                return; 
+            }
+        }
+
+        localStorage.setItem('driver_data', JSON.stringify(d));
+        
+        if(d.notice.trim() !== "") {
+            database.ref('global_notice').set(d.notice);
+        } else {
+            database.ref('global_notice').remove();
+        }
+
+        changeScreen('scr-driver-map');
+        
+        let mapContainer = document.getElementById('viewport-driver');
+        currentZoomDriver = (mapContainer.clientWidth / 1440) * 100;
+        zoomMap('driver', 0); 
+
+        const payload = {
+            action: 'driver',
+            time: new Date().toLocaleString('vi-VN'),
+            name: d.name,
+            phone: d.phone,
+            car: d.car,
+            device: getDeviceName(),
+            sheetId: DRIVER_SHEET_ID
+        };
+
+        fetch(GOOGLE_APP_SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(payload)
+        }).then(res => console.log("Đã gửi yêu cầu lưu tài xế"))
+          .catch(err => console.log("Lỗi đồng bộ dữ liệu tài xế:", err));
+
+        const baseContainer = document.getElementById('driver-base-points-container');
+        baseContainer.innerHTML = '';
+        coords.forEach((p, index) => {
+            const dot = document.createElement('div');
+            dot.style.position = 'absolute';
+            dot.style.width = '12px';
+            dot.style.height = '12px';
+            dot.style.background = 'rgba(0, 243, 255, 0.4)'; 
+            dot.style.border = '1px solid var(--neon-blue)';
+            dot.style.borderRadius = '50%';
+            dot.style.transform = 'translate(-50%, -50%)';
+            dot.style.left = (p.x / 14.4) + '%';
+            dot.style.top = (p.y / 28.5) + '%';
+            dot.style.display = 'flex';
+            dot.style.justifyContent = 'center';
+            dot.style.alignItems = 'center';
+            dot.style.color = 'white';
+            dot.style.fontSize = '7px';
+            dot.innerText = index + 1;
+            baseContainer.appendChild(dot);
+        });
+
+        renderDriverMap();
+    }
+
+    function openDriverActionModal(tripData) {
+        selectedTripForAction = tripData;
+        document.getElementById('action-modal-info').innerText = `Khách: ${tripData.name} - Trạm: ${tripData.pointIndex}`;
+        document.getElementById('driver-action-modal').style.display = 'flex';
+    }
+
+    function closeDriverActionModal() {
+        selectedTripForAction = null;
+        document.getElementById('driver-action-modal').style.display = 'none';
+    }
+
+    // [CẬP NHẬT] Hàm xử lý khi Tài xế bấm nhận 1 cuốc -> tự động nhận tất cả khách đang chờ tại trạm đó
+    function acceptTrip(targetBooking, myData) {
+        database.ref('bookings').once('value').then(snap => {
+            let allBookings = snap.val() || {};
+            let updates = {};
+
+            for (let key in allBookings) {
+                let trip = allBookings[key];
+                // Nhận tất cả khách đang ở trạng thái 'waiting' cùng trạm với khách được bấm
+                if (trip.status === 'waiting' && trip.pointIndex === targetBooking.pointIndex) {
+                    updates[key + '/status'] = 'confirmed';
+                    updates[key + '/driver'] = myData;
+                }
+            }
+
+            if (Object.keys(updates).length > 0) {
+                database.ref('bookings').update(updates).catch(err => alert("Lỗi nhận cuốc: " + err));
+            } else {
+                alert("Rất tiếc! Cuốc xe này đã được tài xế khác nhận hoặc đã bị hủy.");
+            }
+        });
+    }
+
+    // [CẬP NHẬT] Hoàn thành hàng loạt khách của tài xế đang ở cùng trạm
+    function completeTripAction() {
+        if(!selectedTripForAction) return;
+        let b = selectedTripForAction;
+        let myData = JSON.parse(localStorage.getItem('driver_data'));
+
+        database.ref('bookings').once('value').then(snap => {
+            let allBookings = snap.val() || {};
+            let updatesHistory = {};
+            let removeBookings = {};
+
+            for (let key in allBookings) {
+                let trip = allBookings[key];
+                // Lọc các cuốc xe đã confirmed, thuộc cùng trạm, và của chính tài xế này
+                if (trip.status === 'confirmed' && trip.pointIndex === b.pointIndex && trip.driver && trip.driver.phone === myData.phone) {
+                    let historyData = Object.assign({}, trip);
+                    historyData.finalStatus = 'completed';
+                    historyData.endTime = Date.now();
+                    updatesHistory[key] = historyData;
+                    removeBookings[key] = null;
+                }
+            }
+
+            if (Object.keys(updatesHistory).length > 0) {
+                database.ref('trip_history').update(updatesHistory).then(() => {
+                    database.ref('bookings').update(removeBookings);
+                });
+            }
+        });
+
+        closeDriverActionModal();
+    }
+
+    // [CẬP NHẬT] Trả lại hàng loạt khách của tài xế đang ở cùng trạm
+    function transferTripAction() {
+        if(!selectedTripForAction) return;
+        let b = selectedTripForAction;
+        let myData = JSON.parse(localStorage.getItem('driver_data'));
+
+        database.ref('bookings').once('value').then(snap => {
+            let allBookings = snap.val() || {};
+            let updates = {};
+
+            for (let key in allBookings) {
+                let trip = allBookings[key];
+                if (trip.status === 'confirmed' && trip.pointIndex === b.pointIndex && trip.driver && trip.driver.phone === myData.phone) {
+                    updates[key + '/status'] = 'waiting';
+                    updates[key + '/driver'] = null;
+                }
+            }
+
+            if (Object.keys(updates).length > 0) {
+                database.ref('bookings').update(updates).then(() => {
+                    alert("Đã chuyển cuốc lại lên bản đồ thành công!");
+                });
+            }
+        });
+
+        closeDriverActionModal();
+    }
+
+    function renderDriverMap() {
+        const pointsContainer = document.getElementById('driver-points-container');
+        const dashboard = document.getElementById('driver-dashboard');
+        const myData = JSON.parse(localStorage.getItem('driver_data'));
+
+        database.ref('bookings').on('value', (snapshot) => {
+            pointsContainer.innerHTML = '';
+            dashboard.innerHTML = '';
+            
+            const all = snapshot.val();
+            if(!all) return;
+
+            const list = Object.values(all).sort((a,b) => a.time - b.time);
+
+            list.forEach(b => {
+                if(b.status === 'confirmed') {
+                    if(!b.driver || b.driver.phone !== myData.phone) return;
+                }
+
+                const dot = document.createElement('div');
+                dot.className = 'driver-point ' + (b.status === 'confirmed' ? 'confirmed' : 'waiting');
+                dot.style.left = (b.x / 14.4) + '%';
+                dot.style.top = (b.y / 28.5) + '%';
+                dot.innerText = b.pointIndex || "?"; 
+                
+                dot.onclick = () => {
+                    if(b.status === 'waiting') {
+                        acceptTrip(b, myData);
+                    } else if(b.status === 'confirmed') {
+                        openDriverActionModal(b);
+                    }
+                };
+                pointsContainer.appendChild(dot);
+
+                const isMyTrip = b.driver && b.driver.phone === myData.phone;
+                if(b.status === 'waiting' || isMyTrip) {
+                    const row = document.createElement('div');
+                    row.className = 'info-row';
+                    
+                    row.style.cursor = 'pointer'; 
+                    row.style.padding = '8px';
+                    row.style.background = isMyTrip ? 'rgba(255,49,49,0.1)' : 'transparent';
+                    row.style.borderRadius = '5px';
+
+                    const sColor = isMyTrip ? 'var(--red-alert)' : 'var(--orange-border)';
+                    const sText = isMyTrip ? 'Đang đón (Bấm đây để Xử lý)' : 'Đang chờ (Bấm đây để Nhận)';
+                    
+                    const roleLabel = b.role ? `[${b.role}] ` : '';
+
+                    row.innerHTML = `
+                        <span style="font-weight: bold; text-transform: uppercase;">[TRẠM ĐÓN: ${b.pointIndex || '?'}] ${roleLabel}${b.name}</span>
+                        <br>
+                        <span style="color: ${sColor}; font-weight: bold; font-size: 11px; animation: ${isMyTrip ? 'pulse-driver 1.5s infinite' : 'none'};">${sText}</span>
+                    `;
+
+                    row.onclick = () => {
+                        if(b.status === 'waiting') {
+                            acceptTrip(b, myData);
+                        } else if(b.status === 'confirmed') {
+                            openDriverActionModal(b);
+                        }
+                    };
+
+                    dashboard.appendChild(row);
+                }
+            });
+        });
+    }
+
+    database.ref('global_notice').on('value', (snapshot) => {
+        const val = snapshot.val();
+        const defaultMessage = "AN TOÀN LÀ TRÊN HẾT";
+        const displayMessage = (val && val.trim() !== "") ? val : defaultMessage;
+
+        const marquee = document.getElementById('home-marquee');
+        if(marquee) {
+            marquee.innerText = displayMessage.toUpperCase();
+            marquee.style.animation = 'none';
+            marquee.offsetHeight; 
+            marquee.style.animation = null; 
+        }
+        
+        const clientNotice = document.getElementById('client-notice-content');
+        if(clientNotice) {
+            clientNotice.innerText = displayMessage;
+        }
+    });
+
+</script>
+
+</body>
+</html>
